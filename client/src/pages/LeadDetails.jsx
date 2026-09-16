@@ -174,7 +174,7 @@ const LeadDetails = () => {
       if (data.hasNewData === false) {
         setEnrichNotice({
           type: "warning",
-          text: data.message || "Oops! No more information found from Google for this lead (-98 credits)."
+          text: data.message || "No new contact details could be found online. No credits were deducted."
         });
       } else {
         setEnrichNotice({

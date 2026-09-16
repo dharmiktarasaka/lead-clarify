@@ -446,16 +446,27 @@ const enrichSingleLead = async (req, res) => {
     if (!hasWebsite) missing.push("website");
     lead.missingFields = missing;
 
-    await lead.save();
+    if (changed) {
+      await lead.save();
+    }
 
-    // Deduct exactly 98 credits when Auto-Find Details (AI Web) is executed
+    if (!changed) {
+      return res.json({
+        message: "No new contact details could be found online for this business. No credits were deducted.",
+        hasNewData: false,
+        lead,
+        enriched,
+        creditsUsed: 0,
+        remainingCredits: user.credits
+      });
+    }
+
+    // Deduct exactly 98 credits ONLY when real new contact details were discovered and saved
     const creditResult = await deductUserCredits(req.user.id, AUTO_FIND_CREDIT_COST, "Auto-Find Details (AI Web)");
 
     res.json({
-      message: changed
-        ? `Lead contact details discovered and saved using AI! (-${AUTO_FIND_CREDIT_COST} credits)`
-        : `Searched web for contact details (-${AUTO_FIND_CREDIT_COST} credits).`,
-      hasNewData: changed,
+      message: `Lead contact details discovered and saved using AI! (-${AUTO_FIND_CREDIT_COST} credits)`,
+      hasNewData: true,
       lead,
       enriched,
       creditsUsed: AUTO_FIND_CREDIT_COST,
