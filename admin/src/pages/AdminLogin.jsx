@@ -4,8 +4,9 @@ import { useAdminAuth } from "../context/AdminAuthContext";
 import { ShieldCheckIcon, LockIcon, MailIcon, SparklesIcon } from "@animateicons/react/lucide";
 
 const AdminLogin = () => {
-  const [email, setEmail] = useState("admin@leadagent.ai");
-  const [password, setPassword] = useState("Admin@123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -99,11 +100,12 @@ const AdminLogin = () => {
               <input
                 type="email"
                 required
+                autoComplete="username"
                 className="admin-input"
                 style={{ width: "100%", paddingLeft: "36px" }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@leadagent.ai"
+                placeholder="admin@leadsflar.com"
               />
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex" }}>
                 <MailIcon size={16} />
@@ -117,10 +119,11 @@ const AdminLogin = () => {
             </label>
             <div style={{ position: "relative" }}>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
+                autoComplete="current-password"
                 className="admin-input"
-                style={{ width: "100%", paddingLeft: "36px" }}
+                style={{ width: "100%", paddingLeft: "36px", paddingRight: "54px" }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -128,6 +131,25 @@ const AdminLogin = () => {
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex" }}>
                 <LockIcon size={16} />
               </span>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  color: "var(--accent-primary)",
+                  padding: "4px 6px"
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
 
