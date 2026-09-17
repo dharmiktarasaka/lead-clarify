@@ -30,19 +30,20 @@ import {
   ShieldCheckIcon,
   DownloadIcon
 } from "@animateicons/react/lucide";
+import AnimatedEmoji from "../components/AnimatedEmoji";
 
 const TARGET_FIELDS = [
   {
     key: "companyName",
     label: "Company Name",
     required: true,
-    aliases: [/company/i, /business/i, /organization/i, /org/i, /firm/i, /account/i, /name/i, /client/i]
+    aliases: [/company/i, /business/i, /organization/i, /org/i, /firm/i, /practice/i, /clinic/i, /center/i, /hospital/i, /account/i, /client/i]
   },
   {
     key: "contactName",
     label: "Contact Person",
     required: false,
-    aliases: [/contact/i, /person/i, /full.*name/i, /lead.*name/i, /representative/i, /owner/i, /first.*name/i]
+    aliases: [/contact/i, /person/i, /full.*name/i, /lead.*name/i, /doctor/i, /dr\b/i, /dentist/i, /physician/i, /representative/i, /owner/i, /first.*name/i]
   },
   {
     key: "email",
@@ -54,7 +55,7 @@ const TARGET_FIELDS = [
     key: "phone",
     label: "Phone / Mobile",
     required: false,
-    aliases: [/phone/i, /mobile/i, /tel/i, /cell/i, /contact.*no/i, /number/i]
+    aliases: [/phone/i, /mobile/i, /tel/i, /cell/i, /contact.*no/i, /number/i, /whatsapp/i]
   },
   {
     key: "website",
@@ -66,21 +67,226 @@ const TARGET_FIELDS = [
     key: "industry",
     label: "Industry / Category",
     required: false,
-    aliases: [/industry/i, /sector/i, /category/i, /niche/i, /domain/i, /type/i]
+    aliases: [/industry/i, /sector/i, /category/i, /niche/i, /specialty/i, /type/i]
   },
   {
     key: "location",
-    label: "Location / City",
+    label: "Location / Address",
     required: false,
-    aliases: [/location/i, /city/i, /address/i, /country/i, /state/i, /region/i, /place/i]
+    aliases: [/location/i, /city/i, /address/i, /country/i, /state/i, /region/i, /place/i, /street/i]
   },
   {
     key: "notes",
-    label: "Notes / Details",
+    label: "Notes / Pitch / Details",
     required: false,
-    aliases: [/note/i, /comment/i, /remark/i, /desc/i, /about/i]
+    aliases: [/note/i, /pitch/i, /comment/i, /remark/i, /desc/i, /about/i, /info/i, /audit/i]
   }
 ];
+
+const autoDetectFieldMappings = (headers, rows) => {
+  const initialMapping = {
+    companyName: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    website: "",
+    industry: "",
+    location: "",
+    notes: ""
+  };
+  const usedHeaders = new Set();
+  const sampleRows = rows.slice(0, 15);
+
+  const getSamples = (h) =>
+    sampleRows
+      .map((r) => String(r[h] !== undefined && r[h] !== null ? r[h] : "").trim())
+      .filter(Boolean);
+
+  // 1. Identify purely numeric index/id columns (#, ID, Row No, or values are just integers like 1, 2, 3 or 11, 12, 13)
+  const indexCols = new Set();
+  headers.forEach((h) => {
+    const samples = getSamples(h);
+    if (samples.length > 0) {
+      const isPureNumbers = samples.every((s) => /^\d{1,6}$/.test(s));
+      const hasIndexName = /^(#|no\.?|id|sr|index|num|s\.?no)$/i.test(h.trim());
+      if (isPureNumbers || hasIndexName) {
+        indexCols.add(h);
+      }
+    }
+  });
+
+  // PASS 1: Explicit header name matches (excluding generic Column 1, Column 2, etc. and index columns)
+  TARGET_FIELDS.forEach((field) => {
+    const matched = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (field.key === "companyName" && indexCols.has(h)) return false;
+      const clean = h.trim();
+      if (/^(column\s*\d+|field\s*\d+|__empty)/i.test(clean)) return false;
+      return field.aliases.some((rgx) => rgx.test(clean));
+    });
+
+    if (matched) {
+      initialMapping[field.key] = matched;
+      usedHeaders.add(matched);
+    }
+  });
+
+  // PASS 2: Deep Content-Aware Data Pattern Detection
+  const remainingHeaders = headers.filter((h) => !usedHeaders.has(h));
+
+  // A. Phone Number detection
+  if (!initialMapping.phone) {
+    const phoneMatch = remainingHeaders.find((h) => {
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /^\+?[\d\s\-().]{8,22}$/.test(s) && (s.match(/\d/g) || []).length >= 7
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.4);
+    });
+    if (phoneMatch) {
+      initialMapping.phone = phoneMatch;
+      usedHeaders.add(phoneMatch);
+    }
+  }
+
+  // B. Email detection
+  if (!initialMapping.email) {
+    const emailMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(s)
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.3);
+    });
+    if (emailMatch) {
+      initialMapping.email = emailMatch;
+      usedHeaders.add(emailMatch);
+    }
+  }
+
+  // C. Website / URL detection
+  if (!initialMapping.website) {
+    const webMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /^(https?:\/\/|www\.)|(\.[a-z]{2,8}(\/.*)?$)/i.test(s) && !s.includes("@")
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.3);
+    });
+    if (webMatch) {
+      initialMapping.website = webMatch;
+      usedHeaders.add(webMatch);
+    }
+  }
+
+  // D. Contact Name (Starts with Dr., Mr., or personal names)
+  if (!initialMapping.contactName) {
+    const contactMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (indexCols.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /^(Dr\.?|Doctor|Mr\.?|Mrs\.?|Ms\.?|Prof\.?)\s+[A-Za-z]/i.test(s) ||
+        (/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,2}$/.test(s) && !/\b(LLC|Inc|Corp|Dental|Clinic|Office|Care|Group)\b/i.test(s))
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.4);
+    });
+    if (contactMatch) {
+      initialMapping.contactName = contactMatch;
+      usedHeaders.add(contactMatch);
+    }
+  }
+
+  // E. Location (Full address with street names / zip codes)
+  if (!initialMapping.location) {
+    const locMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (indexCols.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /\b(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|way|ln|lane|hwy|pkwy|suite|ste|bldg|#\d+)\b/i.test(s) ||
+        /\b[A-Z]{2}\s+\d{5}\b/.test(s)
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.4);
+    });
+    if (locMatch) {
+      initialMapping.location = locMatch;
+      usedHeaders.add(locMatch);
+    }
+  }
+
+  // F. Industry / Category (medical, dental, cosmetic, etc.)
+  if (!initialMapping.industry) {
+    const indMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (indexCols.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /\b(dentistry|dental|orthodontics|implant|cosmetic|family|medical|health|clinic|surgery|consulting|marketing|agency|software)\b/i.test(s)
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.3);
+    });
+    if (indMatch) {
+      initialMapping.industry = indMatch;
+      usedHeaders.add(indMatch);
+    }
+  }
+
+  // G. Company Name (Business names with suffixes or primary text column)
+  if (!initialMapping.companyName) {
+    // Look for business suffixes
+    const bizMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (indexCols.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) =>
+        /\b(dds|dmd|dental|clinic|office|group|care|center|associates|corp|inc|llc|co|hospital|practice)\b/i.test(s)
+      ).length;
+      return matchCount >= Math.ceil(samples.length * 0.3);
+    });
+
+    if (bizMatch) {
+      initialMapping.companyName = bizMatch;
+      usedHeaders.add(bizMatch);
+    } else {
+      // Pick first non-numeric, non-index text column
+      const fallback = headers.find((h) => !usedHeaders.has(h) && !indexCols.has(h));
+      if (fallback) {
+        initialMapping.companyName = fallback;
+        usedHeaders.add(fallback);
+      } else if (headers.length > 0) {
+        initialMapping.companyName = headers[0];
+      }
+    }
+  }
+
+  // H. Notes / Pitch / Details (long descriptive sentences)
+  if (!initialMapping.notes) {
+    const notesMatch = headers.find((h) => {
+      if (usedHeaders.has(h)) return false;
+      if (indexCols.has(h)) return false;
+      const samples = getSamples(h);
+      if (samples.length === 0) return false;
+      const matchCount = samples.filter((s) => s.length > 25).length;
+      return matchCount >= Math.ceil(samples.length * 0.3);
+    });
+    if (notesMatch) {
+      initialMapping.notes = notesMatch;
+      usedHeaders.add(notesMatch);
+    }
+  }
+
+  return initialMapping;
+};
 
 const Leads = () => {
   const navigate = useNavigate();
@@ -584,30 +790,8 @@ const Leads = () => {
       setFileHeaders(headers);
       setRawRows(jsonRows);
 
-      // Auto-detect & map fields using intelligent regex aliases
-      const initialMapping = {};
-      const usedHeaders = new Set();
-
-      TARGET_FIELDS.forEach(field => {
-        // Find best match among headers
-        const matched = headers.find(h => {
-          if (usedHeaders.has(h)) return false;
-          return field.aliases.some(rgx => rgx.test(h.trim()));
-        });
-
-        if (matched) {
-          initialMapping[field.key] = matched;
-          usedHeaders.add(matched);
-        } else {
-          initialMapping[field.key] = "";
-        }
-      });
-
-      // If companyName wasn't matched, pick the first available column as fallback
-      if (!initialMapping.companyName && headers.length > 0) {
-        initialMapping.companyName = headers[0];
-      }
-
+      // Auto-detect & map fields using intelligent regex aliases and deep content inspection
+      const initialMapping = autoDetectFieldMappings(headers, jsonRows);
       setFieldMappings(initialMapping);
       setImportStep("map");
     } catch (err) {
@@ -1157,7 +1341,9 @@ const Leads = () => {
                       hidden
                     />
                     <label htmlFor="spreadsheet-upload" className="import-dropzone__label">
-                      <span className="import-dropzone__icon">📊</span>
+                      <span className="import-dropzone__icon">
+                        <AnimatedEmoji emoji="📊" size={36} />
+                      </span>
                       <span>Click to select Excel (.xlsx) or CSV file</span>
                       <span className="import-dropzone__hint">Supports any column names or order</span>
                     </label>
@@ -1174,14 +1360,17 @@ const Leads = () => {
                 /* Step 2: Column Matcher & Preview */
                 <div className="column-mapper">
                   <div className="mapper-header-card">
-                    <span className="badge badge--primary">
-                      📄 <strong>{rawRows.length}</strong> rows detected in spreadsheet
+                    <span className="badge badge--primary" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                      <AnimatedEmoji emoji="📄" size={15} />
+                      <span><strong>{rawRows.length}</strong> rows detected in spreadsheet</span>
                     </span>
                     <button
                       className="btn btn--sm btn--ghost"
                       onClick={() => setImportStep("upload")}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
                     >
-                      🔄 Upload different file
+                      <AnimatedEmoji emoji="🔄" size={14} />
+                      <span>Upload different file</span>
                     </button>
                   </div>
 
@@ -1191,46 +1380,44 @@ const Leads = () => {
 
                   <div className="mapper-grid">
                     {TARGET_FIELDS.map(field => (
-                      <div key={field.key} className="mapper-card">
-                        <div className="mapper-label-row">
-                          <span className="mapper-label">
-                            {field.label} {field.required && <strong style={{ color: "var(--danger)" }}>*</strong>}
-                          </span>
-                          {fieldMappings[field.key] ? (
-                            <span className="badge badge--success" style={{ fontSize: "11px", padding: "2px 7px" }}>
-                              ✓ Matched
-                            </span>
-                          ) : (
-                            <span className="badge badge--default" style={{ fontSize: "11px", padding: "2px 7px" }}>
-                              Unmapped
-                            </span>
-                          )}
+                      <div className="mapper-field-row" key={field.key}>
+                        <div className="mapper-field-label">
+                          <span>{field.label}</span>
+                          {field.required && <span className="mapper-required">*</span>}
                         </div>
                         <select
                           value={fieldMappings[field.key] || ""}
-                          onChange={(e) => handleMappingChange(field.key, e.target.value)}
+                          onChange={e => handleMappingChange(field.key, e.target.value)}
                           className="mapper-select"
                         >
                           <option value="">— Skip / Custom Field —</option>
-                          {fileHeaders.map(header => (
-                            <option key={header} value={header}>
-                              {header}
-                            </option>
-                          ))}
+                          {fileHeaders.map(header => {
+                            const sampleVal = rawRows.find(
+                              r => r[header] !== undefined && r[header] !== null && String(r[header]).trim() !== ""
+                            )?.[header];
+                            const sampleSnippet = sampleVal
+                              ? ` (e.g. "${String(sampleVal).slice(0, 24)}${String(sampleVal).length > 24 ? "..." : ""}")`
+                              : "";
+                            return (
+                              <option key={header} value={header}>
+                                {header}{sampleSnippet}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                     ))}
                   </div>
 
-                  {/* Extra custom fields notice */}
-                  <div style={{ padding: "10px 14px", background: "var(--bg-tertiary)", border: "1px solid var(--border-color-light)", borderRadius: "var(--radius-sm)", fontSize: "12px", color: "var(--text-secondary)", marginBottom: "18px" }}>
-                    💡 <strong>Unmapped columns</strong> in your sheet will automatically be saved as dynamic custom fields for each lead.
+                  <div className="mapper-notice" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <AnimatedEmoji emoji="💡" size={18} />
+                    <span><strong>Unmapped columns</strong> in your sheet will automatically be saved as dynamic custom fields for each lead.</span>
                   </div>
 
-                  {/* Quick Preview Table (First 2 rows) */}
+                  {/* Quick Preview Table (First 3 rows) */}
                   <div>
                     <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "6px" }}>
-                      Preview (First 2 Rows)
+                      Preview (First 3 Rows)
                     </span>
                     <div style={{ overflowX: "auto", border: "1px solid var(--border-primary)", borderRadius: "var(--radius-sm)" }}>
                       <table className="mapper-preview-table">
@@ -1238,19 +1425,25 @@ const Leads = () => {
                           <tr>
                             <th>Company</th>
                             <th>Contact</th>
-                            <th>Email</th>
                             <th>Phone</th>
+                            <th>Location</th>
+                            <th>Industry</th>
+                            <th>Notes</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {rawRows.slice(0, 2).map((r, i) => (
+                          {rawRows.slice(0, 3).map((r, i) => (
                             <tr key={i}>
                               <td style={{ fontWeight: "600", color: "var(--text-primary)" }}>
                                 {r[fieldMappings.companyName] || `Lead #${i + 1}`}
                               </td>
                               <td>{r[fieldMappings.contactName] || "—"}</td>
-                              <td>{r[fieldMappings.email] || "—"}</td>
                               <td>{r[fieldMappings.phone] || "—"}</td>
+                              <td>{r[fieldMappings.location] || "—"}</td>
+                              <td>{r[fieldMappings.industry] || "—"}</td>
+                              <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {r[fieldMappings.notes] || "—"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1427,7 +1620,10 @@ const Leads = () => {
                   marginBottom: "24px"
                 }}
               >
-                💡 <strong>Quality Notice:</strong> {importResult.scrapCount} rows matched fake names, disposable email domains, or dummy phone numbers. They have been isolated to <strong>Scraps &gt; {importResult.fileName}</strong>. You can review or recover them at any time.
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                  <AnimatedEmoji emoji="💡" size={16} />
+                  <span><strong>Quality Notice:</strong> {importResult.scrapCount} rows matched fake names, disposable email domains, or dummy phone numbers. They have been isolated to <strong>Scraps &gt; {importResult.fileName}</strong>. You can review or recover them at any time.</span>
+                </div>
               </div>
             ) : (
               <div
@@ -1441,7 +1637,10 @@ const Leads = () => {
                   marginBottom: "24px"
                 }}
               >
-                ✨ <strong>Great news:</strong> 100% of rows in this spreadsheet met quality standards and zero fake records were detected.
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AnimatedEmoji emoji="✨" size={16} />
+                  <span><strong>Great news:</strong> 100% of rows in this spreadsheet met quality standards and zero fake records were detected.</span>
+                </div>
               </div>
             )}
 

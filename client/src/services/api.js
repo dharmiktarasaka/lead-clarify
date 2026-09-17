@@ -88,4 +88,10 @@ export const analyzeBatchLeads = (data) => api.post("/ai/analyze-batch", data ||
 export const enrichLead = (id) => api.post(`/leads/${id}/enrich`);
 export const enrichBatchLeads = (data) => api.post("/leads/enrich-batch", data || {});
 
+// In-App Notifications
+export const getNotifications = () => api.get("/notifications");
+export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => api.post("/notifications/mark-all-read");
+export const clearAllNotifications = () => api.delete("/notifications/clear-all");
+
 export default api;

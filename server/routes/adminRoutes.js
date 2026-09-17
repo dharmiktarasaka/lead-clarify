@@ -8,6 +8,8 @@ const {
   getUserById,
   updateUserStatus,
   updateUserRole,
+  updateUserCredits,
+  sendCreditsByLookup,
   deleteUser,
   getGlobalLeads,
   getLoginLogs,
@@ -28,6 +30,8 @@ router.get("/users", getUsers);
 router.get("/users/:id", getUserById);
 router.patch("/users/:id/status", updateUserStatus);
 router.patch("/users/:id/role", updateUserRole);
+router.patch("/users/:id/credits", updateUserCredits);
+router.post("/users/send-credits", sendCreditsByLookup);
 router.delete("/users/:id", deleteUser);
 
 // Global Leads Management

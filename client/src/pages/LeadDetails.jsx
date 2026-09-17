@@ -28,6 +28,7 @@ import {
   ShieldCheckIcon,
   InfoIcon
 } from "@animateicons/react/lucide";
+import AnimatedEmoji, { EmojiReactionBar } from "../components/AnimatedEmoji";
 
 const statusOptions = ["new", "contacted", "replied", "qualified", "won", "lost"];
 
@@ -289,14 +290,15 @@ const LeadDetails = () => {
             <span className={`badge badge--lg ${lead.status === "won" ? "badge--success" : lead.status === "lost" ? "badge--danger" : "badge--info"}`}>
               {lead.status.toUpperCase()}
             </span>
-            <span className={`lead-details__score ${score.className}`} title="Sales Priority Score (AI Propensity)">
-              {score.emoji} Sales Score: {lead.score} ({score.label})
+            <span className={`lead-details__score ${score.className}`} title="Sales Priority Score (AI Propensity)" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <AnimatedEmoji emoji={score.emoji} size={18} />
+              <span>Sales Score: {lead.score} ({score.label})</span>
             </span>
             <span
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "5px",
+                gap: "6px",
                 fontSize: "13px",
                 fontWeight: "700",
                 padding: "4px 10px",
@@ -307,9 +309,13 @@ const LeadDetails = () => {
               }}
               title="Factual Verification Trust Score (Multi-source corroborated)"
             >
-              <span>{vBadge.emoji}</span>
+              <AnimatedEmoji emoji={vBadge.emoji} size={16} />
               <span>Trust Score: {vBadge.score}/100 ({vBadge.label})</span>
             </span>
+            {/* Interactive Emoji Reaction Bar (😍 ❤️ 😂 🔥 👋) */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+              <EmojiReactionBar />
+            </div>
           </div>
         </div>
         <div className="page-header__actions">
@@ -509,7 +515,10 @@ const LeadDetails = () => {
           <h3>Business Information</h3>
           <div className="detail-card__fields">
             <div className="detail-field">
-              <span className="detail-field__label">🏭 Industry</span>
+              <span className="detail-field__label" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <AnimatedEmoji emoji="🏭" size={15} />
+                <span>Industry</span>
+              </span>
               {editing ? (
                 <input
                   type="text"
@@ -521,7 +530,10 @@ const LeadDetails = () => {
               )}
             </div>
             <div className="detail-field">
-              <span className="detail-field__label">📍 Location</span>
+              <span className="detail-field__label" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <AnimatedEmoji emoji="📍" size={15} />
+                <span>Location</span>
+              </span>
               {editing ? (
                 <input
                   type="text"
@@ -533,11 +545,17 @@ const LeadDetails = () => {
               )}
             </div>
             <div className="detail-field">
-              <span className="detail-field__label">📂 Source</span>
+              <span className="detail-field__label" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <AnimatedEmoji emoji="📂" size={15} />
+                <span>Source</span>
+              </span>
               <span className="detail-field__value">{lead.source || "manual"}</span>
             </div>
             <div className="detail-field">
-              <span className="detail-field__label">🔄 Status</span>
+              <span className="detail-field__label" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <AnimatedEmoji emoji="🔄" size={15} />
+                <span>Status</span>
+              </span>
               {editing ? (
                 <select
                   value={editData.status || "new"}
@@ -556,7 +574,10 @@ const LeadDetails = () => {
 
         {/* Notes */}
         <div className="detail-card detail-card--full">
-          <h3>📝 Notes</h3>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <AnimatedEmoji emoji="📝" size={18} />
+            <span>Notes</span>
+          </h3>
           {editing ? (
             <textarea
               className="detail-textarea"
@@ -573,7 +594,10 @@ const LeadDetails = () => {
         {/* Additional Spreadsheet / Custom Fields */}
         {lead.customFields && Object.keys(lead.customFields).length > 0 && (
           <div className="detail-card detail-card--full">
-            <h3>📊 Additional Spreadsheet Fields</h3>
+            <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <AnimatedEmoji emoji="📊" size={18} />
+              <span>Additional Spreadsheet Fields</span>
+            </h3>
             <div
               style={{
                 display: "grid",

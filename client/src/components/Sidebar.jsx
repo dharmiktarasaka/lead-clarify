@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logoImg from "../assets/logo.png";
 import {
   SparklesIcon,
   LayoutDashboardIcon,
@@ -52,11 +53,18 @@ const Sidebar = ({ isOpen, onToggle }) => {
 
   return (
     <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
-      <div className="sidebar__brand">
-        <span className="sidebar__logo" style={{ display: "inline-flex", alignItems: "center" }}>
-          <SparklesIcon size={22} color="var(--accent-primary)" />
-        </span>
-        <span className="sidebar__title">Leadsflar</span>
+      <div className="sidebar__brand" style={{ padding: "16px 20px" }}>
+        <img
+          src={logoImg}
+          alt="Leadsflar"
+          style={{
+            height: "44px",
+            maxWidth: "185px",
+            width: "auto",
+            objectFit: "contain",
+            display: "block"
+          }}
+        />
       </div>
 
       <nav className="sidebar__nav">

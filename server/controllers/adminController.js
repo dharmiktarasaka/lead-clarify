@@ -1,5 +1,7 @@
 const User = require("../models/User");
 const Lead = require("../models/Lead");
+const Notification = require("../models/Notification");
+const { getAndRefillCredits } = require("../services/creditService");
 
 // -------------------------------------------------------------
 // 1. System & Platform Stats
@@ -215,6 +217,137 @@ const updateUserRole = async (req, res) => {
     });
   } catch (error) {
     console.error("Admin updateUserRole error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateUserCredits = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, mode = "add" } = req.body;
+
+    const numAmount = parseInt(amount, 10);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "Please provide a valid credit amount greater than 0." });
+    }
+
+    let user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user = await getAndRefillCredits(user);
+
+    const oldCredits = user.credits || 0;
+    let newCredits = mode === "set" ? numAmount : oldCredits + numAmount;
+
+    user.credits = newCredits;
+    if (newCredits > (user.maxDailyCredits || 1000)) {
+      user.maxDailyCredits = newCredits;
+    }
+
+    await user.save();
+
+    // Issue in-app notification to the customer
+    try {
+      await Notification.create({
+        user: user._id,
+        title: "⚡ Credits Received!",
+        message: mode === "set"
+          ? `An administrator updated your account credit balance to ${newCredits.toLocaleString()} credits.`
+          : `An administrator granted +${numAmount.toLocaleString()} credits to your account! Your new balance is ${newCredits.toLocaleString()} credits.`,
+        type: "credit_grant",
+        amount: numAmount,
+        newBalance: newCredits,
+        read: false
+      });
+    } catch (notifErr) {
+      console.error("Failed to create credit grant notification:", notifErr);
+    }
+
+    res.json({
+      message: `Successfully transferred ${numAmount.toLocaleString()} credits to ${user.name} (${user.email}). New balance: ${newCredits.toLocaleString()} credits.`,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        credits: user.credits,
+        maxDailyCredits: user.maxDailyCredits
+      },
+      creditsAdded: numAmount,
+      totalCredits: newCredits
+    });
+  } catch (error) {
+    console.error("Admin updateUserCredits error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const sendCreditsByLookup = async (req, res) => {
+  try {
+    const { userId, email, amount, mode = "add" } = req.body;
+
+    const numAmount = parseInt(amount, 10);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "Please provide a valid credit amount greater than 0." });
+    }
+
+    let user = null;
+    if (userId) {
+      if (typeof userId === "string" && userId.trim().match(/^[0-9a-fA-F]{24}$/)) {
+        user = await User.findById(userId.trim());
+      }
+    }
+    if (!user && (email || userId)) {
+      const searchTarget = (email || userId).trim().toLowerCase();
+      user = await User.findOne({ email: searchTarget });
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found. Please verify the User ID or Email address." });
+    }
+
+    user = await getAndRefillCredits(user);
+
+    const oldCredits = user.credits || 0;
+    let newCredits = mode === "set" ? numAmount : oldCredits + numAmount;
+
+    user.credits = newCredits;
+    if (newCredits > (user.maxDailyCredits || 1000)) {
+      user.maxDailyCredits = newCredits;
+    }
+
+    await user.save();
+
+    // Issue in-app notification to the customer
+    try {
+      await Notification.create({
+        user: user._id,
+        title: "⚡ Credits Received!",
+        message: mode === "set"
+          ? `An administrator updated your account credit balance to ${newCredits.toLocaleString()} credits.`
+          : `An administrator granted +${numAmount.toLocaleString()} credits to your account! Your new balance is ${newCredits.toLocaleString()} credits.`,
+        type: "credit_grant",
+        amount: numAmount,
+        newBalance: newCredits,
+        read: false
+      });
+    } catch (notifErr) {
+      console.error("Failed to create credit grant notification:", notifErr);
+    }
+
+    res.json({
+      message: `Successfully transferred ${numAmount.toLocaleString()} credits to ${user.name} (${user.email}). New balance: ${newCredits.toLocaleString()} credits.`,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        credits: user.credits,
+        maxDailyCredits: user.maxDailyCredits
+      },
+      creditsAdded: numAmount,
+      totalCredits: newCredits
+    });
+  } catch (error) {
+    console.error("Admin sendCreditsByLookup error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -531,6 +664,8 @@ module.exports = {
   getUserById,
   updateUserStatus,
   updateUserRole,
+  updateUserCredits,
+  sendCreditsByLookup,
   deleteUser,
   getGlobalLeads,
   getLoginLogs,

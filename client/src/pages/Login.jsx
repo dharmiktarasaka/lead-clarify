@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider, isFirebaseConfigured } from "../firebase/config";
+import logoImg from "../assets/logo.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -68,7 +69,17 @@ const Login = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-card__header">
-          <span className="auth-card__logo">🎯</span>
+          <img
+            src={logoImg}
+            alt="Leadsflar"
+            style={{
+              height: "46px",
+              maxWidth: "210px",
+              width: "auto",
+              objectFit: "contain",
+              marginBottom: "12px"
+            }}
+          />
           <h1>Welcome Back</h1>
           <p>Sign in to your Leadsflar account</p>
         </div>

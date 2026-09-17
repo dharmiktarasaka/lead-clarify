@@ -4,6 +4,7 @@ const authRoutes = require("./routes/authRoutes");
 const leadRoutes = require("./routes/leadRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
@@ -18,12 +19,14 @@ app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Fallback aliases in case request is sent without /api prefix
 app.use("/auth", authRoutes);
 app.use("/leads", leadRoutes);
 app.use("/ai", aiRoutes);
 app.use("/admin", adminRoutes);
+app.use("/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {
   res.json({

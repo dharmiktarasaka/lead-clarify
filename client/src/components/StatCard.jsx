@@ -1,7 +1,12 @@
+import React from "react";
+import AnimatedEmoji from "./AnimatedEmoji";
+
 const StatCard = ({ icon, label, value, trend, color }) => {
   return (
     <div className={`stat-card stat-card--${color || "default"}`}>
-      <div className="stat-card__icon">{icon}</div>
+      <div className="stat-card__icon">
+        {typeof icon === "string" ? <AnimatedEmoji emoji={icon} size={28} /> : icon}
+      </div>
       <div className="stat-card__info">
         <span className="stat-card__value">{value}</span>
         <span className="stat-card__label">{label}</span>

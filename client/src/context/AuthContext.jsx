@@ -57,8 +57,28 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
+    // Auto-sync when returning to tab or window
+    const handleFocus = () => {
+      if (localStorage.getItem("token")) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
     window.addEventListener("creditsUpdated", handleCreditsUpdate);
-    return () => window.removeEventListener("creditsUpdated", handleCreditsUpdate);
+
+    // Periodic gentle credit sync every 30 seconds
+    const interval = setInterval(() => {
+      if (localStorage.getItem("token")) {
+        refreshUser();
+      }
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("creditsUpdated", handleCreditsUpdate);
+    };
   }, []);
 
   const login = async (email, password) => {

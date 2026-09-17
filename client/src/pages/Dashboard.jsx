@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { getLeads } from "../services/api";
 import StatCard from "../components/StatCard";
 import LeadTable from "../components/LeadTable";
+import AnimatedEmoji from "../components/AnimatedEmoji";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -48,7 +49,10 @@ const Dashboard = () => {
     <div className="dashboard">
       <div className="page-header">
         <div>
-          <h1>{getGreeting()} 👋</h1>
+          <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span>{getGreeting()}</span>
+            <AnimatedEmoji emoji="👋" size={30} />
+          </h1>
           <p className="page-header__subtitle">
             Welcome back, <strong>{user?.name}</strong>. Here's your lead overview.
           </p>

@@ -60,6 +60,12 @@ export const updateAdminUserStatus = (id, status) =>
 export const updateAdminUserRole = (id, role) =>
   api.patch(`/admin/users/${id}/role`, { role });
 
+export const updateAdminUserCredits = (id, data) =>
+  api.patch(`/admin/users/${id}/credits`, data);
+
+export const sendAdminCreditsLookup = (data) =>
+  api.post("/admin/users/send-credits", data);
+
 export const deleteAdminUser = (id) => api.delete(`/admin/users/${id}`);
 
 export const getAdminGlobalLeads = (params) =>

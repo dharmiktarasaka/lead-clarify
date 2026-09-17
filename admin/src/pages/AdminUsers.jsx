@@ -4,6 +4,8 @@ import {
   getAdminUserById,
   updateAdminUserStatus,
   updateAdminUserRole,
+  updateAdminUserCredits,
+  sendAdminCreditsLookup,
   deleteAdminUser
 } from "../services/api";
 import {
@@ -30,6 +32,14 @@ const AdminUsers = () => {
   // User detail drawer modal
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDetailLoading, setUserDetailLoading] = useState(false);
+
+  // Send Credits Modal state
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditTargetUser, setCreditTargetUser] = useState(null);
+  const [creditLookupInput, setCreditLookupInput] = useState("");
+  const [creditAmount, setCreditAmount] = useState(1000);
+  const [creditMode, setCreditMode] = useState("add"); // "add" or "set"
+  const [creditSubmitting, setCreditSubmitting] = useState(false);
 
   useEffect(() => {
     fetchUsers(1);
@@ -102,6 +112,66 @@ const AdminUsers = () => {
     }
   };
 
+  const handleOpenSendCredits = (user = null) => {
+    setCreditTargetUser(user);
+    setCreditLookupInput(user ? (user._id || user.email) : "");
+    setCreditAmount(1000);
+    setCreditMode("add");
+    setCreditModalOpen(true);
+  };
+
+  const handleSendCreditsSubmit = async (e) => {
+    e.preventDefault();
+    const amountNum = parseInt(creditAmount, 10);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showNotice("Please enter a valid credit amount greater than 0.", "danger");
+      return;
+    }
+
+    setCreditSubmitting(true);
+    try {
+      let res;
+      if (creditTargetUser?._id) {
+        res = await updateAdminUserCredits(creditTargetUser._id, {
+          amount: amountNum,
+          mode: creditMode
+        });
+      } else {
+        const trimmed = creditLookupInput.trim();
+        if (!trimmed) {
+          showNotice("Please enter a User ID or user Email address.", "danger");
+          setCreditSubmitting(false);
+          return;
+        }
+        res = await sendAdminCreditsLookup({
+          userId: trimmed,
+          email: trimmed,
+          amount: amountNum,
+          mode: creditMode
+        });
+      }
+
+      showNotice(res.data.message || "Credits transferred successfully!", "success");
+      setCreditModalOpen(false);
+      fetchUsers(pagination.page);
+
+      if (selectedUser?.user && (selectedUser.user._id === creditTargetUser?._id || selectedUser.user._id === res.data.user?._id)) {
+        setSelectedUser((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            credits: res.data.totalCredits,
+            maxDailyCredits: res.data.user?.maxDailyCredits
+          }
+        }));
+      }
+    } catch (err) {
+      showNotice(err.response?.data?.message || err.message, "danger");
+    } finally {
+      setCreditSubmitting(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Header */}
@@ -111,17 +181,28 @@ const AdminUsers = () => {
             User Management & Logins
           </h1>
           <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "4px 0 0" }}>
-            Monitor active customer accounts, session login frequencies, and manage access
+            Monitor active customer accounts, session login frequencies, and manage credits
           </p>
         </div>
 
-        <button
-          onClick={() => fetchUsers(pagination.page)}
-          className="admin-btn admin-btn--secondary"
-        >
-          <RefreshCwIcon size={14} />
-          <span>Refresh</span>
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={() => handleOpenSendCredits(null)}
+            className="admin-btn admin-btn--primary"
+            style={{ gap: "6px" }}
+            title="Send credits to any user ID or Email"
+          >
+            <span>⚡ Send Credits</span>
+          </button>
+
+          <button
+            onClick={() => fetchUsers(pagination.page)}
+            className="admin-btn admin-btn--secondary"
+          >
+            <RefreshCwIcon size={14} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Notice Alert */}
@@ -228,6 +309,7 @@ const AdminUsers = () => {
                 <th style={{ whiteSpace: "nowrap" }}>User</th>
                 <th style={{ whiteSpace: "nowrap" }}>Role</th>
                 <th style={{ whiteSpace: "nowrap" }}>Status</th>
+                <th style={{ whiteSpace: "nowrap" }}>Credits</th>
                 <th style={{ whiteSpace: "nowrap" }}>Logins</th>
                 <th style={{ whiteSpace: "nowrap" }}>Last Active</th>
                 <th style={{ whiteSpace: "nowrap" }}>Leads</th>
@@ -238,13 +320,13 @@ const AdminUsers = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
+                  <td colSpan="9" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
                     Loading users...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
+                  <td colSpan="9" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
                     No users matching criteria.
                   </td>
                 </tr>
@@ -292,6 +374,15 @@ const AdminUsers = () => {
                     </td>
 
                     <td style={{ whiteSpace: "nowrap" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ fontSize: "13px" }}>⚡</span>
+                        <strong style={{ color: "var(--accent-primary)", fontSize: "13px" }}>
+                          {(u.credits !== undefined ? u.credits : 1000).toLocaleString()}
+                        </strong>
+                      </div>
+                    </td>
+
+                    <td style={{ whiteSpace: "nowrap" }}>
                       <strong style={{ color: "var(--accent-primary)", fontSize: "13px" }}>
                         {u.loginCount || 0}
                       </strong>{" "}
@@ -323,6 +414,23 @@ const AdminUsers = () => {
 
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                       <div style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
+                        {/* Send Credits Button */}
+                        <button
+                          onClick={() => handleOpenSendCredits(u)}
+                          className="admin-btn admin-btn--secondary admin-btn--sm"
+                          title="Send credits to this user"
+                          style={{
+                            padding: "5px 8px",
+                            fontSize: "11px",
+                            color: "var(--accent-primary)",
+                            borderColor: "rgba(79, 70, 229, 0.3)",
+                            background: "#EEF2FF",
+                            fontWeight: "700"
+                          }}
+                        >
+                          ⚡ +Credits
+                        </button>
+
                         {/* Inspect User */}
                         <button
                           onClick={() => handleInspectUser(u._id)}
@@ -425,7 +533,7 @@ const AdminUsers = () => {
             {/* Modal Body */}
             <div style={{ padding: "24px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "20px" }}>
               {/* Account Overview Cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px" }}>
                 <div style={{ background: "var(--bg-tertiary)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-color-light)" }}>
                   <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", display: "block" }}>ROLE</span>
                   <strong style={{ fontSize: "14px", color: "var(--text-primary)" }}>{selectedUser.user.role}</strong>
@@ -435,6 +543,22 @@ const AdminUsers = () => {
                   <strong style={{ fontSize: "14px", color: selectedUser.user.status === "active" ? "var(--success)" : "var(--danger)" }}>
                     {selectedUser.user.status}
                   </strong>
+                </div>
+                <div style={{ background: "var(--bg-tertiary)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-color-light)" }}>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", display: "block" }}>LIVE CREDITS</span>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "2px" }}>
+                    <strong style={{ fontSize: "14px", color: "var(--accent-primary)" }}>
+                      ⚡ {(selectedUser.user.credits !== undefined ? selectedUser.user.credits : 1000).toLocaleString()}
+                    </strong>
+                    <button
+                      onClick={() => handleOpenSendCredits(selectedUser.user)}
+                      className="admin-btn admin-btn--primary admin-btn--sm"
+                      style={{ padding: "2px 7px", fontSize: "11px" }}
+                      title="Add credits to this user"
+                    >
+                      +Add
+                    </button>
+                  </div>
                 </div>
                 <div style={{ background: "var(--bg-tertiary)", padding: "12px 14px", borderRadius: "8px", border: "1px solid var(--border-color-light)" }}>
                   <span style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", display: "block" }}>TOTAL LOGINS</span>
@@ -514,6 +638,257 @@ const AdminUsers = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Credits Modal */}
+      {creditModalOpen && (
+        <div className="admin-modal-overlay" onClick={() => !creditSubmitting && setCreditModalOpen(false)}>
+          <div
+            className="admin-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px", width: "100%", padding: 0, overflow: "hidden" }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "20px 24px",
+                borderBottom: "1px solid var(--border-primary)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: "linear-gradient(135deg, #EEF2FF, #FFFFFF)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#FFF",
+                    fontSize: "18px"
+                  }}
+                >
+                  ⚡
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "var(--text-primary)" }}>
+                    Send User Credits
+                  </h3>
+                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                    Instant live credit balance transfer
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => !creditSubmitting && setCreditModalOpen(false)}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSendCreditsSubmit} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "18px" }}>
+              {/* Target User Info */}
+              {creditTargetUser ? (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-primary)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}
+                >
+                  <div>
+                    <strong style={{ display: "block", fontSize: "13px", color: "var(--text-primary)" }}>
+                      {creditTargetUser.name}
+                    </strong>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      {creditTargetUser.email}
+                    </span>
+                    <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", fontFamily: "monospace", marginTop: "2px" }}>
+                      ID: {creditTargetUser._id}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>CURRENT BALANCE</span>
+                    <strong style={{ fontSize: "15px", color: "var(--accent-primary)" }}>
+                      ⚡ {(creditTargetUser.credits !== undefined ? creditTargetUser.credits : 1000).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase" }}>
+                    User ID or User Email Address
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="admin-input"
+                    style={{ width: "100%" }}
+                    placeholder="Enter MongoDB User ID or user email..."
+                    value={creditLookupInput}
+                    onChange={(e) => setCreditLookupInput(e.target.value)}
+                  />
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                    Paste any customer user ID or their registered email address
+                  </span>
+                </div>
+              )}
+
+              {/* Mode Switcher */}
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase" }}>
+                  Action Type
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setCreditMode("add")}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      border: "1px solid",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      background: creditMode === "add" ? "#EEF2FF" : "var(--bg-tertiary)",
+                      borderColor: creditMode === "add" ? "var(--accent-primary)" : "var(--border-primary)",
+                      color: creditMode === "add" ? "var(--accent-primary)" : "var(--text-secondary)"
+                    }}
+                  >
+                    <span>➕ Add to Balance</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreditMode("set")}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      border: "1px solid",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      background: creditMode === "set" ? "#EEF2FF" : "var(--bg-tertiary)",
+                      borderColor: creditMode === "set" ? "var(--accent-primary)" : "var(--border-primary)",
+                      color: creditMode === "set" ? "var(--accent-primary)" : "var(--text-secondary)"
+                    }}
+                  >
+                    <span>⚙️ Set Exact Total</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Credit Amount */}
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text-secondary)", marginBottom: "6px", textTransform: "uppercase" }}>
+                  {creditMode === "add" ? "Credits to Send" : "Set New Credit Balance"}
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    className="admin-input"
+                    style={{ width: "100%", fontSize: "16px", fontWeight: "700", paddingLeft: "36px" }}
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(Math.max(1, parseInt(e.target.value, 10) || 0))}
+                  />
+                  <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "14px" }}>
+                    ⚡
+                  </span>
+                </div>
+
+                {/* Quick select pills */}
+                <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
+                  {[250, 500, 1000, 2500, 5000, 10000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCreditAmount(amt)}
+                      style={{
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        borderRadius: "14px",
+                        background: creditAmount === amt ? "var(--accent-primary)" : "var(--bg-tertiary)",
+                        color: creditAmount === amt ? "#FFF" : "var(--text-secondary)",
+                        border: "1px solid var(--border-primary)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      +{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Calculated Balance Preview */}
+              {creditTargetUser && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "6px",
+                    background: "#F0FDF4",
+                    border: "1px solid #BBF7D0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontSize: "13px"
+                  }}
+                >
+                  <span style={{ color: "#166534", fontWeight: "600" }}>Estimated New Balance:</span>
+                  <strong style={{ color: "#16A34A", fontSize: "15px" }}>
+                    ⚡{" "}
+                    {(
+                      creditMode === "add"
+                        ? (creditTargetUser.credits || 0) + (parseInt(creditAmount, 10) || 0)
+                        : parseInt(creditAmount, 10) || 0
+                    ).toLocaleString()}{" "}
+                    Credits
+                  </strong>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  disabled={creditSubmitting}
+                  onClick={() => setCreditModalOpen(false)}
+                  className="admin-btn admin-btn--secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creditSubmitting}
+                  className="admin-btn admin-btn--primary"
+                  style={{ gap: "6px" }}
+                >
+                  <span>{creditSubmitting ? "Transferring..." : "⚡ Transfer Credits Now"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

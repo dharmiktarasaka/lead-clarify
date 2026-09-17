@@ -26,14 +26,18 @@ async function getAndRefillCredits(userIdOrUser) {
   let modified = false;
 
   if (isNewDay) {
-    user.credits = DAILY_CREDITS;
+    // Only refill if user has spent below the daily allowance
+    // Do not decrease credits if an admin granted them extra credits
+    if ((user.credits || 0) < DAILY_CREDITS) {
+      user.credits = DAILY_CREDITS;
+      modified = true;
+    }
     user.lastCreditRefill = now;
-    user.maxDailyCredits = DAILY_CREDITS;
     modified = true;
   } else if (user.credits === undefined || user.credits === null) {
     user.credits = DAILY_CREDITS;
     user.lastCreditRefill = now;
-    user.maxDailyCredits = DAILY_CREDITS;
+    user.maxDailyCredits = Math.max(DAILY_CREDITS, user.maxDailyCredits || 0);
     modified = true;
   }
 

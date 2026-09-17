@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAdminAuth } from "../context/AdminAuthContext";
+import logoImg from "../assets/logo.png";
 import {
   LayoutDashboardIcon,
   UsersIcon,
@@ -33,27 +34,33 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           borderBottom: "1px solid var(--border-primary)"
         }}
       >
-        <div
-          style={{
-            width: "38px",
-            height: "38px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #6366F1, #4F46E5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "var(--shadow-primary)",
-            color: "#FFF"
-          }}
-        >
-          <ShieldCheckIcon size={22} color="#FFF" />
-        </div>
-        <div>
-          <h2 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-primary)", letterSpacing: "-0.01em", margin: 0 }}>
-            Leadsflar <span style={{ color: "var(--accent-primary)" }}>HQ</span>
-          </h2>
-          <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Admin Control
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <img
+            src={logoImg}
+            alt="Leadsflar"
+            style={{
+              height: "40px",
+              maxWidth: "170px",
+              width: "auto",
+              objectFit: "contain",
+              display: "block"
+            }}
+          />
+          <span
+            style={{
+              fontSize: "10px",
+              fontWeight: "700",
+              color: "#4F46E5",
+              background: "#EEF2FF",
+              padding: "2px 8px",
+              borderRadius: "6px",
+              display: "inline-block",
+              width: "fit-content",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em"
+            }}
+          >
+            Admin HQ
           </span>
         </div>
       </div>
