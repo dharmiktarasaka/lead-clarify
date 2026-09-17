@@ -50,7 +50,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         </div>
         <div>
           <h2 style={{ fontSize: "16px", fontWeight: "800", color: "var(--text-primary)", letterSpacing: "-0.01em", margin: 0 }}>
-            LeadAgent <span style={{ color: "var(--accent-primary)" }}>HQ</span>
+            Leadsflar <span style={{ color: "var(--accent-primary)" }}>HQ</span>
           </h2>
           <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Admin Control

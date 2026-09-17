@@ -70,7 +70,7 @@ const Login = () => {
         <div className="auth-card__header">
           <span className="auth-card__logo">🎯</span>
           <h1>Welcome Back</h1>
-          <p>Sign in to your AI Lead Agent account</p>
+          <p>Sign in to your Leadsflar account</p>
         </div>
 
         {error && (

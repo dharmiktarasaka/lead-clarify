@@ -56,7 +56,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
         <span className="sidebar__logo" style={{ display: "inline-flex", alignItems: "center" }}>
           <SparklesIcon size={22} color="var(--accent-primary)" />
         </span>
-        <span className="sidebar__title">AI Lead Agent</span>
+        <span className="sidebar__title">Leadsflar</span>
       </div>
 
       <nav className="sidebar__nav">

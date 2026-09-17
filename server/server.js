@@ -27,7 +27,7 @@ app.use("/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.json({
-    message: "AI Lead Agent API is running"
+    message: "Leadsflar API is running"
   });
 });
 

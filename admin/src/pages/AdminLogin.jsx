@@ -144,7 +144,7 @@ const AdminLogin = () => {
         <div style={{ marginTop: "24px", paddingTop: "18px", borderTop: "1px solid var(--admin-border-subtle)", textAlign: "center" }}>
           <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <SparklesIcon size={13} color="var(--primary)" />
-            AI Lead Agent Platform v1.0 Enterprise
+            Leadsflar Platform v1.0 Enterprise
           </p>
         </div>
       </div>
