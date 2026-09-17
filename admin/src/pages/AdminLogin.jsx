@@ -164,10 +164,10 @@ const AdminLogin = () => {
         </form>
 
         <div style={{ marginTop: "24px", paddingTop: "18px", borderTop: "1px solid var(--admin-border-subtle)", textAlign: "center" }}>
-          <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <SparklesIcon size={13} color="var(--primary)" />
-            Leadsflar Platform v1.0 Enterprise
-          </p>
+            <span>Leadsflar Platform v1.0 Enterprise</span>
+          </div>
         </div>
       </div>
     </div>
